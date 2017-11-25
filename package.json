@@ -1,0 +1,22 @@
+{
+  "name": "mokee-fetch",
+  "version": "0.1.0",
+  "description": "Do not wait to download Mokee ROM packages!",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rocket1184/mkfetch.git"
+  },
+  "keywords": [
+    "mokee"
+  ],
+  "author": "rocka",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Rocket1184/mkfetch/issues"
+  },
+  "homepage": "https://github.com/Rocket1184/mkfetch#readme"
+}
