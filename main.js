@@ -4,6 +4,8 @@ const querystring = require('querystring');
 const https = require('https');
 const url = require('url');
 
+let cookie = '';
+
 function get(u) {
     return new Promise((resolve, reject) => {
         https.get(u, res => {
@@ -26,9 +28,10 @@ function post(u, params) {
             host: opt.host,
             method: 'POST',
             headers: {
+                Cookie: cookie,
                 Origin: 'https://download.mokeedev.com',
                 Referer: 'https://download.mokeedev.com',
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                 'Content-Length': Buffer.byteLength(payload)
             }
         }, res => {
@@ -42,6 +45,16 @@ function post(u, params) {
     });
 }
 
+function getCookie() {
+    return new Promise((resolve, reject) => {
+        https.get('https://download.mokeedev.com/download.php', res => {
+            cookie = res.headers['set-cookie'][0];
+            console.log(`Got cookie: ${cookie}`);
+            resolve(cookie);
+        }).on('error', reject);
+    });
+}
+
 const deviceReg = /<li id="device_([^"]+)">[^<]+[^>]+><span>([^<]+)<\/span><\/a>/g;
 
 async function getDevices() {
@@ -52,11 +65,16 @@ async function getDevices() {
     }
 }
 
-function getLink(key) {
-    return post('https://download.mokeedev.com/link.php', { key });
+const realKeyReg = /\$\.post\("gen-link.php",{url:"(\w+)"}/;
+
+async function getLink(key) {
+    const html = await post('https://download.mokeedev.com/download.php', { key });
+    const realKey = realKeyReg.exec(html)[1];
+    const link = await post('https://download.mokeedev.com/gen-link.php', { url: realKey });
+    return link;
 }
 
-const downloadReg = /<td><a href="javascript:downloadPost\('download.php', ?{key:'([^']+)'}\)" id="tdurl">([^<]+)<\/a?><br ?\/><small>md5sum: ([^&]+)&nbsp;<a href="([^"]+)">([^<]+)<\/a><\/small><\/td>/g;
+const downloadReg = /<td><a href="javascript:void\(0\);" onclick="javascript:downloadPost\('download.php', ?{key:'([^']+)'}\)" id="tdurl">([^<]+)<\/a?><br ?\/><small>md5sum: ([^&]+)&nbsp;<a href="javascript:void\(0\);" onclick="location.href='([^"]+)'">([^<]+)<\/a><\/small><\/td>/g;
 
 async function getFullPakcages(devId) {
     const downloadPage = await get('https://download.mokeedev.com/?device=' + devId);
@@ -73,7 +91,7 @@ async function getFullPakcages(devId) {
     return res;
 }
 
-const otaReg = /<tr>[^<]+<td><a href="javascript:downloadPost\('download.php', ?{key:'([^']+)'}\)" id="tdurl">([^<]+)<\/a><br\/><small>md5sum: ([^<]+)<\/small><\/td>[^<]+<td>([^<]+)<\/td>/g;
+const otaReg = /<tr>[^<]+<td><a href="javascript:void\(0\);" onclick="javascript:downloadPost\('download.php', ?{key:'([^']+)'}\)" id="tdurl">([^<]+)<\/a><br\/><small>md5sum: ([^<]+)<\/small><\/td>[^<]+<td>([^<]+)<\/td>/g;
 
 async function getOtaPackages(otaLink) {
     const downloadPage = await get(otaLink);
@@ -90,11 +108,41 @@ async function getOtaPackages(otaLink) {
     return res;
 }
 
-getFullPakcages('bacon').then(arr => {
-    getOtaPackages(arr[0].ota).then(async arr2 => {
-        arr2.forEach(async a => {
-            console.log(a);
-            console.log(await getLink(a.key));
-        });
-    });
-});
+(async function () {
+    await getCookie();
+    switch (process.argv[2]) {
+        case 'dev':
+        case 'device': {
+            console.log(await getDevices());
+            break;
+        }
+        case 'full':
+        case 'full-pkg': {
+            const device = process.argv[3];
+            if (device) {
+                console.log(await getFullPakcages(device));
+            } else {
+                console.log('ERROR: No device specificed.');
+            }
+            break;
+        }
+        case 'ota':
+        case 'ota-pkgs': {
+            const link = process.argv[3];
+            if (link) {
+                console.log(await getOtaPackages(link));
+            } else {
+                console.log('ERROR: No link specificed.');
+            }
+            break;
+        }
+        case 'help':
+        default: {
+            console.log(`Avaliable actions:
+   dev | device             - view avaliavle devices
+  full | full-pkg <device>  - get full packages link
+   ota | ota-pkg <ota-url>  - get ota packages link
+   help                     - display this message.`);
+        }
+    }
+})();
