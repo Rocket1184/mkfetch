@@ -136,12 +136,25 @@ async function getOtaPackages(otaLink) {
             }
             break;
         }
+        case 'link':
+        case 'download': {
+            const key = process.argv[3];
+            if (key) {
+                console.log(await getLink(key));
+            } else {
+                console.log('ERROR: No key specificed.');
+            }
+            break;
+        }
+        case '-h':
         case 'help':
+        case '--help':
         default: {
             console.log(`Avaliable actions:
    dev | device             - view avaliavle devices
-  full | full-pkg <device>  - get full packages link
-   ota | ota-pkg <ota-url>  - get ota packages link
+  full | full-pkg <device>  - get full packages key
+   ota | ota-pkg <ota-url>  - get ota packages key
+  link | download <key>     - get real download link
    help                     - display this message.`);
         }
     }
