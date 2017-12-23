@@ -65,7 +65,7 @@ async function getDevices() {
     }
 }
 
-const realKeyReg = /\$\.post\("gen-link.php",{url:"(\w+)"}/;
+const realKeyReg = /"?url"?: *"(\w+)"/;
 
 async function getLink(key) {
     const html = await post('https://download.mokeedev.com/download.php', { key });
